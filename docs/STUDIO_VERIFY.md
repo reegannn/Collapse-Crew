@@ -29,4 +29,22 @@ Status values: `Open` · `Verified` · `Fixed` · `Issue #<n>`
 
 ## Code behaviour
 
-_Rows are added here by each milestone, grouped by milestone._
+Rows are added by each milestone, grouped by milestone. Rows marked **(comment)** have a
+matching `TODO(verify-in-studio)` comment at that spot in the code; the others are
+wider assumptions with no single line to attach a comment to.
+
+### M1: Core framework
+
+| ID | Where | What to check | Status |
+|----|-------|---------------|--------|
+| SV-101 | every `--!strict` file | Open Studio's Script Analysis: no type errors. Pay attention to `Util/Signal` (generic `Signal<T...>`), and the `typeof(setmetatable(...))` class pattern in `Maid`, `Logger`, `RateLimiter`. Type errors do not stop the game running but should be cleaned up. | Open |
+| SV-102 | `src/client/Bootstrap.client.luau` **(comment)** | After `game.Loaded`, `ReplicatedStorage.Shared` and all its descendants exist on the client, so the direct `Shared.Util...` requires never fail. | Open |
+| SV-103 | `src/client/Bootstrap.client.luau` | The `Client` folder placed in `StarterPlayerScripts` is copied to each player with `Bootstrap` and the `Controllers` folder intact, and `Bootstrap` runs exactly once per player. | Open |
+| SV-104 | `src/shared/Remotes/init.luau` **(comment)** | A `Player`'s `Parent` is `nil` once they have left, so late messages from departed players are dropped by `acceptCall`. | Open |
+| SV-105 | `src/shared/Remotes/init.luau` | The `NetRemotes` folder and every remote appear on the client within the timeout; `ClientReady` reaches the server; the server log shows no "declared but no handler" warning. | Open |
+| SV-106 | `src/shared/Remotes/init.luau` | A message fired before the receiving side has connected its handler is queued and delivered once the handler connects (true for both directions). The ready handshake does not depend on this, but later milestones assume it as a safety net. | Open |
+| SV-107 | `src/shared/Remotes/init.luau` | With a deliberately bad call from a test client (wrong argument type, too many arguments, rapid spam), the handler is not invoked and only a Debug log line appears. | Open |
+| SV-108 | `src/shared/Util/Maid.luau` **(comment)** | `task.cancel` on a suspended or `task.wait`-ing thread stops it without raising an error. | Open |
+| SV-109 | `src/shared/Util/Time.luau` **(comment)** | `workspace:GetServerTimeNow()` returns a Unix-epoch based clock that matches between server and clients. | Open |
+| SV-110 | `src/shared/Util/Time.luau` **(comment)** | `os.date("!%Y-%m-%d", t)` returns the UTC date, e.g. `2026-11-10`. | Open |
+| SV-111 | `src/shared/Util/Lifecycle.luau` | Start-up log shows "Started N of N modules" on both server and client, and a deliberately broken test module is reported and skipped without stopping the others. | Open |

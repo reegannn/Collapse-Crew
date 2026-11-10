@@ -13,7 +13,7 @@ Legend: `[x]` done (written and statically reviewed, **not** run), `[ ]` not don
 | ID | Name | Main outcome | Status |
 |----|------|--------------|--------|
 | M0 | Repo foundation | Layout, configs, docs, conventions | Done |
-| M1 | Core framework | Bootstrap, utilities, remotes, config, logging | Not started |
+| M1 | Core framework | Bootstrap, utilities, remotes, config, logging | In review (code written; Self-Review Gate pending) |
 | M2 | Player data and economy | Saving, coins, XP, leaderstats | Not started |
 | M3 | Lobby and teams | Lobby, party formation, team arenas | Not started |
 | M4 | Round loop | State machine, timer, win/lose, respawn rules | Not started |
@@ -50,12 +50,13 @@ lists the milestone plan; no executable steps were run.
 
 **Goal:** the plumbing every other milestone relies on.
 
-- [ ] Server and client **Bootstrap** with ordered `Init()` / `Start()`
-- [ ] Utilities: `Signal`, `Maid`, `Logger` (levels, debug toggle), `Promise-lite` or plain `pcall` helpers, `Table` helpers, `Time` helpers (UTC date keys)
-- [ ] **Remotes module**: declarative remote definitions, server-side schema validation, per-player rate limiting
-- [ ] **Config** modules: game, round, economy, hazard, UI constants
-- [ ] **Types** module (strict type exports): PlayerData, TeamState, RoundState, PuzzleDefinition, HazardDefinition, etc.
-- [ ] Feature-flag stub (`Flags` module, read from Config for now)
+- [x] Server and client **Bootstrap** with ordered `Init()` / `Start()` (shared start-up routine in `Util/Lifecycle`)
+- [x] Utilities: `Signal`, `Maid`, `Logger` (levels, debug toggle), plain `pcall` helpers (`Safe`; chosen over Promise-lite, see DECISIONS D-010), `TableUtil`, `Time` (UTC day numbers and date keys), plus `PlayerUtil`
+- [x] **Remotes module**: declarative remote definitions, server-side schema validation, per-player rate limiting
+- [x] **Config** modules: game, round, economy, hazard, UI constants (M1 holds the framework's own values; each later milestone adds its tunables)
+- [x] **Types** module (strict type exports): PlayerData, TeamState, RoundState, PuzzleDefinition, HazardDefinition, etc. (team/round/puzzle shapes are drafts, finalised in M3/M4/M6)
+- [x] Feature-flag stub (`Flags` module, read from `Config/FlagConfig` for now)
+- [x] _Added:_ `PlayerSessionService` + `SessionController` "client ready" handshake (DECISIONS D-009), the first real remote and the worked example of the Service/Controller pattern
 
 **Acceptance:** no module has circular requires; every remote has a schema; every module
 has a header comment describing its contract; no use of `wait()`/`spawn()`.
@@ -279,7 +280,7 @@ right milestone here and note it in [`DECISIONS.md`](DECISIONS.md) **before** bu
 | Feature | Milestone |
 |---------|-----------|
 | Repo layout, docs, conventions | M0 |
-| Bootstrap, Signal/Maid/Logger, Remotes, Config, Types, feature flags | M1 |
+| Bootstrap, Signal/Maid/Logger, Remotes, Config, Types, feature flags, client-ready handshake | M1 |
 | Data saving, schema/migration, coins, XP data, leaderstats | M2 |
 | Lobby, party/queue, ready-up, team arenas, disconnect handling | M3 |
 | Round state machine, timer, checkpoints, win/lose, results payload | M4 |
