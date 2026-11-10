@@ -1,0 +1,15 @@
+# Wally = the Roblox package manager (downloads third-party libraries).
+# v1 deliberately uses NO third-party libraries (see docs/DECISIONS.md, D-003),
+# so the dependency lists are empty. Written only; NOT run during the handoff phase.
+[package]
+name = "reegannn/collapse-crew"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+private = true
+
+[dependencies]
+
+[server-dependencies]
+
+[dev-dependencies]

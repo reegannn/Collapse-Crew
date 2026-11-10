@@ -1,0 +1,3 @@
+# Selene = the linter (points out likely mistakes without running the game).
+# Written during the handoff phase; NOT run here. First used in M12.
+std = "roblox"
