@@ -48,6 +48,9 @@ approved. The commit prefixes keep the history as readable as separate branches 
 **How to change it.** If the owner prefers true per-milestone branches, say so and name
 the branches (or approve the `m<N>-<name>` pattern); later sessions will use them.
 
+**Update (2026-11-10).** Refined by D-013: each milestone still uses the session's
+working branch, but is now merged through its own pull request before the next begins.
+
 ---
 
 ## D-003: No third-party libraries in version 1
@@ -209,6 +212,28 @@ can be silently altered or dropped). Agreeing on the shape now avoids a class of
 
 ---
 
+## D-013: One pull request per milestone, merged only when the owner confirms
+
+**Date:** 2026-11-10 · **Decided by:** the owner
+
+**Decision.** When a milestone passes its Self-Review Gate, a pull request (a proposal
+to add the milestone's work to the main copy of the project) is opened with a detailed
+description of everything in it, including all new features. Work then **stops** until
+the owner confirms the merge. After merging, the working branch is restarted from the
+updated `main` and the next milestone begins.
+
+**Why.** It gives the owner a clear checkpoint after every milestone: a written summary
+to read, and the final say on what goes into the project. It also keeps each pull
+request to one milestone, so it stays readable.
+
+**One exception, for history.** M0 and M1 were both already on the working branch when
+this rule was made, and the environment does not allow splitting them onto separate
+branches without extra permission. They therefore share the first pull request, with the
+description divided clearly by milestone. From M2 onward it is strictly one milestone
+per pull request.
+
+---
+
 ## Open questions for the owner
 
 From `handoff.md` section 11. Until answered, the stated assumption is used.
@@ -219,4 +244,4 @@ From `handoff.md` section 11. Until answered, the stated assumption is used.
 | 2 | Comfortable with a coin-only economy at launch (no paid randomness)? | Yes: coins only, no loot boxes | _open_ |
 | 3 | Which Roblox account or group will own the experience? | Unknown; no IDs are hard-coded | _open_ |
 | 4 | When is the Studio + MCP setup expected? | Unknown; M12 stays last unless pulled forward | _open_ |
-| 5 | Per-milestone branches (D-002): keep the single session branch, or switch? | Single session branch with `m<N>:` commit prefixes | _open_ |
+| 5 | Per-milestone branches (D-002): keep the single session branch, or switch? | Single session branch with `m<N>:` commit prefixes | **Answered 2026-11-10:** one pull request per milestone, owner confirms each merge (D-013) |

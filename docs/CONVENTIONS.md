@@ -29,17 +29,38 @@ m0: add repo skeleton, tool configs and docs
 
 ## Branches
 
-- The plan is one branch per milestone, named like `m1-core-framework`, and no direct
-  commits to `main` unless the owner says so.
-- During the Claude Code handoff phase the hosting environment assigns one working branch
-  per session, so a session's milestones may share that branch. The `m<N>:` commit
-  prefixes keep the milestones separable. See `DECISIONS.md` D-002.
+- No direct commits to `main`. Work reaches `main` only through a pull request that the
+  owner has confirmed.
+- During the Claude Code handoff phase the hosting environment assigns one working
+  branch per session (it does not allow pushing to other branches without the owner's
+  explicit permission). Each milestone is therefore built on that working branch, merged
+  through its own pull request, and the branch is then restarted from the updated `main`
+  for the next milestone. See `DECISIONS.md` D-002 and D-013.
 
-## Pull requests
+## Pull requests (one per milestone; the owner confirms every merge)
 
-Use the template in `.github/pull_request_template.md`. Every PR description states:
-what changed, why, which acceptance criteria are met, the open
-`TODO(verify-in-studio)` items, and a link to the milestone review file.
+This is the owner's rule (2026-11-10) and applies to every milestone:
+
+1. When a milestone's Self-Review Gate has passed, open **one pull request for that
+   milestone** into `main`.
+2. **Stop and ask the owner to confirm the merge.** Never merge without that
+   confirmation, and do not start the next milestone on the same branch while the pull
+   request is open (new commits would leak into it).
+3. After the owner confirms and the pull request is merged, restart the working branch
+   from the updated `main` and begin the next milestone.
+
+Every PR description must be **detailed** and written for an owner who is new to game
+development. Use the template in `.github/pull_request_template.md` and include:
+
+- a plain-language summary of what the milestone adds;
+- **every new feature**, and what it means for the game;
+- **every file added, changed or removed**, with one line on what each is for;
+- why key choices were made (pointing to `DECISIONS.md` entries);
+- each acceptance criterion and whether it is met;
+- the new `TODO(verify-in-studio)` items;
+- the self-review verdict, with a link to the milestone review file and a summary of
+  what the review found and fixed;
+- anything deferred, and any questions for the owner.
 
 ## Definition of done (per milestone)
 
@@ -47,6 +68,8 @@ what changed, why, which acceptance criteria are met, the open
 2. Acceptance criteria checked by reading.
 3. Self-Review Gate complete (below).
 4. `STATUS.md` and `STUDIO_VERIFY.md` updated.
+5. Pull request opened with a detailed description, and the owner asked to confirm the
+   merge (see "Pull requests" above).
 
 ## Self-Review Gate (end of every milestone)
 

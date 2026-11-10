@@ -46,10 +46,16 @@ Until answered, the assumption in brackets is used. Answers get recorded in
 2. Comfortable with a coin-only economy at launch, with no paid randomness? _(Assumed: yes.)_
 3. Which Roblox account or group will own the experience? _(Unknown; no IDs are hard-coded.)_
 4. When is the Studio + MCP setup expected? _(Unknown; M12 stays last unless pulled forward.)_
-5. Branching: the hosting environment gives each Claude Code session a single branch, so
-   milestones done in one session share it (commits are prefixed `m0:`, `m1:` ...). Is
-   that acceptable, or should each milestone get its own branch and pull request?
-   _(Assumed: acceptable. See DECISIONS D-002.)_
+5. ~~Branching: one shared branch, or a branch and pull request per milestone?~~
+   **Answered 2026-11-10:** one pull request per milestone, with a detailed description,
+   and the owner confirms every merge before the next milestone starts (DECISIONS D-013).
+
+## Workflow reminder (owner's rule)
+
+After each milestone's Self-Review Gate: open a pull request with a detailed description
+of all changes and new features, then **stop and ask the owner to confirm the merge**.
+Do not start the next milestone until it is merged. Details in
+[`CONVENTIONS.md`](CONVENTIONS.md).
 
 ## Session log
 
