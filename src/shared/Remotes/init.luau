@@ -10,19 +10,22 @@
 			1. declared in Remotes/Definitions (unknown messages do not exist),
 			2. rate-limited per player (Remotes/RateLimiter), and
 			3. checked against its schema (Remotes/Schema)
-		BEFORE any game code sees it. Messages that fail are ignored silently
-		(they are only noted in the Debug log), so a cheater learns nothing.
+		BEFORE any game code sees it. A message that fails is dropped: one-way
+		Events are ignored without any reply, and Functions (which must answer
+		something) answer only the generic (false, "Rejected"). Either way the
+		sender is not told which check failed; the detail goes to the Debug log.
 
 	Public API - server
 		Remotes.InitServer()
 			Creates the remote instances. Called once by the server Bootstrap
-			before any Service starts.
+			before any Service starts. A definition that is malformed is logged
+			and not created.
 		Remotes.OnServerEvent(name, handler) -> RBXScriptConnection
 			handler(player, ...) runs for each valid, in-limit client message.
 		Remotes.OnServerInvoke(name, handler)
 			handler(player, ...) must return (ok: boolean, payload). Rejected
 			calls answer (false, "Rejected"); a handler error answers
-			(false, "ServerError") and is logged.
+			(false, "ServerError") and is logged with its stack trace.
 		Remotes.FireClient(name, player, ...)     Players who have left are skipped.
 		Remotes.FireClients(name, players, ...)
 		Remotes.FireAllClients(name, ...)
@@ -36,11 +39,14 @@
 			Bootstrap before any Controller starts. Yields.
 		Remotes.FireServer(name, ...)
 		Remotes.InvokeServer(name, ...) -> (ok: boolean, payload)
-			Yields until the server answers. Never throws: a network failure
-			returns (false, "InvokeFailed").
+			Yields until the server answers. Never throws for a network problem:
+			a failed call returns (false, "InvokeFailed").
 		Remotes.OnClientEvent(name, handler) -> RBXScriptConnection
 
 	Contract
+		- Each client-to-server remote has EXACTLY ONE server handler. Connecting
+		  a second one raises an error. (Two handlers would each spend one of
+		  the player's rate-limit tokens, silently halving their allowance.)
 		- Using a name that is not declared, or using a remote in the wrong
 		  direction/kind, is a programming mistake and raises an error straight
 		  away (at start-up, when handlers are connected), so typos are found
@@ -52,6 +58,11 @@
 		  clients): a client could simply never answer and stall the server.
 		- Validation of server-to-client messages is a development aid only
 		  (Studio + the ValidateOutboundRemotes flag); the server is trusted.
+		- If InitClient could not find a remote (the server failed to start, or
+		  the connection is very poor), that client has no networking:
+		  FireServer does nothing, InvokeServer returns (false, "InvokeFailed")
+		  and OnClientEvent raises an error. Each is logged. There is no retry;
+		  the server simply never sees that client report ready.
 ]]
 
 local Players = game:GetService("Players")
@@ -76,9 +87,12 @@ local SERVER_ERROR = "ServerError"
 local NOT_IMPLEMENTED = "NotImplemented"
 local INVOKE_FAILED = "InvokeFailed"
 
+-- All four tables are keyed by remote name, so their size is fixed by the
+-- number of entries in Remotes/Definitions.
 local remoteInstances: { [string]: Instance } = {}
 local rateLimiters: { [string]: RateLimiter.RateLimiter } = {}
 local handledRemotes: { [string]: boolean } = {}
+local warnedMissing: { [string]: boolean } = {}
 local initialised = false
 
 local Remotes = {}
@@ -147,8 +161,15 @@ local function acceptCall(name: string, definition: RemoteDefinition, player: Pl
 		return false
 	end
 
+	-- "Fail closed": a client-to-server remote without a limiter should be
+	-- impossible (InitServer always creates one), so if it ever happens the
+	-- safe answer is to refuse the call rather than accept it unlimited.
 	local limiter = rateLimiters[name]
-	if limiter ~= nil and not limiter:TryConsume(player) then
+	if limiter == nil then
+		log:Error("Refused %s: it has no rate limiter", name)
+		return false
+	end
+	if not limiter:TryConsume(player) then
 		log:Debug("Ignored %s from %s: over the rate limit", name, player.Name)
 		return false
 	end
@@ -172,25 +193,64 @@ local function checkOutbound(name: string, definition: RemoteDefinition, ...: an
 	end
 end
 
+local function findArgsProblem(definition: RemoteDefinition): string?
+	local fromClient = definition.direction == "ClientToServer"
+	for index, validator in definition.args do
+		if type(validator) ~= "function" then
+			return string.format("has something that is not a validator at argument %d", index)
+		end
+		if fromClient and Schema.IsLoose(validator) then
+			return string.format(
+				"uses Schema.Table/Schema.Any for client input at argument %d, which is not allowed",
+				index
+			)
+		end
+	end
+	return nil
+end
+
+local function findRateLimitProblem(definition: RemoteDefinition): string?
+	local limit = definition.rateLimit :: any
+	if limit == nil then
+		return nil
+	end
+	if type(limit) ~= "table" or type(limit.burst) ~= "number" or type(limit.perSecond) ~= "number" then
+		return "has a rateLimit that is not { burst = number, perSecond = number }"
+	end
+	return nil
+end
+
 -- Catches mistakes in Remotes/Definitions at start-up instead of in play.
+-- A bad definition is skipped so that one typo cannot stop every other remote
+-- from being created.
 local function isValidDefinition(name: string, definition: RemoteDefinition): boolean
+	local problem: string? = nil
+
 	if definition.kind ~= "Event" and definition.kind ~= "Function" then
-		log:Error("Remote %q has an unknown kind; it was not created", name)
-		return false
+		problem = "has an unknown kind"
+	elseif definition.direction ~= "ClientToServer" and definition.direction ~= "ServerToClient" then
+		problem = "has an unknown direction"
+	elseif definition.kind == "Function" and definition.direction ~= "ClientToServer" then
+		problem = "is a server-to-client Function, which is not allowed"
+	elseif type(definition.args) ~= "table" then
+		problem = "has no argument schema"
+	else
+		problem = findArgsProblem(definition) or findRateLimitProblem(definition)
 	end
-	if definition.direction ~= "ClientToServer" and definition.direction ~= "ServerToClient" then
-		log:Error("Remote %q has an unknown direction; it was not created", name)
-		return false
-	end
-	if definition.kind == "Function" and definition.direction ~= "ClientToServer" then
-		log:Error("Remote %q is a server-to-client Function, which is not allowed; it was not created", name)
-		return false
-	end
-	if type(definition.args) ~= "table" then
-		log:Error("Remote %q has no argument schema; it was not created", name)
+
+	if problem ~= nil then
+		log:Error("Remote %q %s; it was not created", name, problem)
 		return false
 	end
 	return true
+end
+
+-- Enforces "exactly one server handler per remote".
+local function claimHandler(name: string)
+	if handledRemotes[name] then
+		error(string.format("Remotes: %q already has a server handler; each remote has exactly one", name), 3)
+	end
+	handledRemotes[name] = true
 end
 
 function Remotes.InitServer()
@@ -230,7 +290,8 @@ function Remotes.InitServer()
 		end
 	end
 
-	-- Parent the folder last, so clients receive it with its contents in place.
+	-- The folder is parented only once it is fully built. Clients do not rely
+	-- on it arriving in one piece: InitClient waits for each remote by name.
 	folder.Parent = ReplicatedStorage
 
 	-- Never disconnected, on purpose: Remotes exists for exactly as long as the
@@ -248,8 +309,9 @@ function Remotes.OnServerEvent(name: string, handler: (player: Player, ...any) -
 	requireServer("OnServerEvent")
 	local definition = getDefinition(name, "Event", "ClientToServer")
 	local remote = getInstance(name) :: RemoteEvent
-	handledRemotes[name] = true
+	claimHandler(name)
 
+	-- TODO(verify-in-studio): a message fired before this handler connects is queued by the engine and delivered once it connects (same for OnClientEvent).
 	return remote.OnServerEvent:Connect(function(player: Player, ...: any)
 		if acceptCall(name, definition, player, ...) then
 			handler(player, ...)
@@ -261,7 +323,7 @@ function Remotes.OnServerInvoke(name: string, handler: (player: Player, ...any) 
 	requireServer("OnServerInvoke")
 	local definition = getDefinition(name, "Function", "ClientToServer")
 	local remote = getInstance(name) :: RemoteFunction
-	handledRemotes[name] = true
+	claimHandler(name)
 
 	remote.OnServerInvoke = function(player: Player, ...: any): (boolean, any)
 		if not acceptCall(name, definition, player, ...) then
@@ -270,6 +332,7 @@ function Remotes.OnServerInvoke(name: string, handler: (player: Player, ...any) 
 
 		-- xpcall keeps an error inside the handler from travelling to the
 		-- client (which would leak server details) and records where it happened.
+		-- TODO(verify-in-studio): xpcall(fn, debug.traceback, ...) passes the extra arguments to fn, allows fn to yield, and returns the traceback text on failure.
 		local results = table.pack(xpcall(handler, debug.traceback, player, ...))
 		if not results[1] then
 			log:Error("Handler for %s failed: %s", name, tostring(results[2]))
@@ -323,6 +386,18 @@ end
 -- Client
 ----------------------------------------------------------------------------
 
+-- Returns nil (and warns once per remote) when a remote never arrived from
+-- the server. A missing remote on the client is a network/start-up failure,
+-- not a programming mistake, so sending degrades gracefully instead of throwing.
+local function findClientInstance(name: string): Instance?
+	local instance = remoteInstances[name]
+	if instance == nil and not warnedMissing[name] then
+		warnedMissing[name] = true
+		log:Warn("Remote %q is unavailable on this client; messages to it are dropped", name)
+	end
+	return instance
+end
+
 function Remotes.InitClient()
 	requireClient("InitClient")
 	if initialised then
@@ -350,17 +425,25 @@ end
 function Remotes.FireServer(name: string, ...: any)
 	requireClient("FireServer")
 	getDefinition(name, "Event", "ClientToServer")
-	local remote = getInstance(name) :: RemoteEvent
-	remote:FireServer(...)
+	local remote = findClientInstance(name)
+	if remote == nil then
+		return
+	end
+	local remoteEvent = remote :: RemoteEvent
+	remoteEvent:FireServer(...)
 end
 
 function Remotes.InvokeServer(name: string, ...: any): (boolean, any)
 	requireClient("InvokeServer")
 	getDefinition(name, "Function", "ClientToServer")
-	local remote = getInstance(name) :: RemoteFunction
+	local remote = findClientInstance(name)
+	if remote == nil then
+		return false, INVOKE_FAILED
+	end
+	local remoteFunction = remote :: RemoteFunction
 
 	local results = table.pack(pcall(function(...: any): ...any
-		return remote:InvokeServer(...)
+		return remoteFunction:InvokeServer(...)
 	end, ...))
 	if not results[1] then
 		log:Warn("InvokeServer %s failed: %s", name, tostring(results[2]))

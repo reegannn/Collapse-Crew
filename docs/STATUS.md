@@ -5,14 +5,15 @@ end.** The full plan is in [`ROADMAP.md`](ROADMAP.md).
 
 **Last updated:** 2026-11-10
 **Phase:** Handoff phase (repo only; nothing is run, built or tested)
-**Current milestone:** M1 (Core framework)
+**Current milestone:** none in progress. M0 and M1 are done and waiting in a pull
+request for the owner to confirm the merge. M2 starts after that merge.
 
 ## Milestones
 
 | ID | Name | Status | Review |
 |----|------|--------|--------|
-| M0 | Repo foundation | Done | [M0-review](reviews/M0-review.md) |
-| M1 | Core framework | In progress | |
+| M0 | Repo foundation | Done (in pull request, awaiting owner's merge confirmation) | [M0-review](reviews/M0-review.md) |
+| M1 | Core framework | Done (in pull request, awaiting owner's merge confirmation) | [M1-review](reviews/M1-review.md) |
 | M2 | Player data and economy | Not started | |
 | M3 | Lobby and teams | Not started | |
 | M4 | Round loop | Not started | |
@@ -31,11 +32,14 @@ It does **not** mean tested. Nothing is tested until M12.
 
 ## What is next
 
-1. M1: Core framework (bootstrap, utilities, remotes, config, types, feature flags).
+1. **Owner:** read the M0 + M1 pull request and confirm the merge.
+2. After the merge: restart the working branch from the updated `main`.
+3. **M2: Player data and economy** (`DataService`, profile schema and migration,
+   `EconomyService`, leaderstats, "safe mode" when data cannot be loaded).
 
 ## Blockers
 
-None.
+- M2 cannot start until the owner confirms the M0 + M1 merge (owner's rule, see below).
 
 ## Questions for the owner
 
@@ -67,5 +71,19 @@ Do not start the next milestone until it is merged. Details in
   `wally.toml`, `.gitignore`, `README.md`, the `docs/` skeleton, the pull request
   template and `docs/CONVENTIONS.md`. Copied the brief into the repo as `handoff.md`.
 - M0 Self-Review Gate passed: [`reviews/M0-review.md`](reviews/M0-review.md).
+- **M1 complete.** Added the core framework: utilities (`Signal`, `Maid`, `Logger`,
+  `Safe`, `TableUtil`, `Time`, `PlayerUtil`, `Lifecycle`), the `Remotes` networking
+  doorway (definitions, schema validation, per-player rate limiting), `Config` modules,
+  `Types`, `Flags`, the server and client Bootstrap scripts, and the client-ready
+  handshake (`PlayerSessionService` / `SessionController`).
+- M1 Self-Review Gate passed: [`reviews/M1-review.md`](reviews/M1-review.md). An
+  independent read-only reviewer found no High-severity issues, 2 Medium and 15 Low;
+  all were fixed or explicitly accepted. Verdict: Ready with caveats (untested until M12).
+- The owner set the pull-request rule (one per milestone, owner confirms each merge);
+  recorded as DECISIONS D-013. M0 and M1 share the first pull request because both were
+  already on the working branch when the rule was made.
+
+**Next**
+- Wait for the owner to confirm the merge, then begin M2.
 
 **Nothing was run, built, installed, linted, formatted or tested.**

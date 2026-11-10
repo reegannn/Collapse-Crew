@@ -125,9 +125,10 @@ order is hidden and a stray file gets loaded by accident).
 **Decision.** Every message between a player's device and the server goes through the
 `Remotes` module. Each message type is declared in one list
 (`Remotes/Definitions.luau`) with the exact arguments it may carry and how often one
-player may send it. A message that breaks those rules is ignored without telling the
-sender. Requests that expect a reply only ever go from client to server and always
-answer `(ok, payload)`.
+player may send it. A message that breaks those rules is dropped without telling the
+sender which rule it broke. Requests that expect a reply only ever go from client to
+server and always answer `(ok, payload)`. Each message type has exactly one piece of
+server code that handles it.
 
 **Why.** Cheaters can send any message they like, as often as they like. Checking every
 message in one place means no individual feature can forget to check. Ignoring bad

@@ -33,6 +33,7 @@ function PlayerUtil.ObservePlayers(
 ): () -> ()
 	local connections: { RBXScriptConnection } = {}
 
+	-- TODO(verify-in-studio): connecting and then listing GetPlayers() with no yield in between reports each player exactly once, under both Immediate and Deferred signal behaviour.
 	table.insert(connections, Players.PlayerAdded:Connect(onAdded))
 	if onRemoving ~= nil then
 		table.insert(connections, Players.PlayerRemoving:Connect(onRemoving))

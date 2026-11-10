@@ -58,6 +58,7 @@ function RateLimiter.new(burst: number, perSecond: number): RateLimiter
 end
 
 function RateLimiter.TryConsume(self: RateLimiter, player: Player, now: number?): boolean
+	-- TODO(verify-in-studio): os.clock() advances with real elapsed seconds (not only while scripts are busy), so buckets refill at the configured rate.
 	local currentTime = now or os.clock()
 	local userId = player.UserId
 

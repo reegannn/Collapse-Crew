@@ -39,7 +39,7 @@ local loggingConfig = GameConfig.Logging
 Logger.SetLevel(if RunService:IsStudio() then loggingConfig.studioLevel else loggingConfig.level)
 
 local log = Logger.new("Server")
-log:Info("%s v%s starting", GameConfig.Name, GameConfig.Version)
+log:Info("%s v%s starting", GameConfig.name, GameConfig.version)
 
 Remotes.InitServer()
 Lifecycle.Run("Server", script.Parent.Services, SERVICE_ORDER)

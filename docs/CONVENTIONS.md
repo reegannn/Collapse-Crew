@@ -114,7 +114,8 @@ well-known alternative is used with a `TODO(verify-in-studio)`.
 | Local variable, parameter, private function | `camelCase` | `local roundTimer` |
 | Private field on an object | `_camelCase` | `self._items` |
 | Constant | `UPPER_SNAKE_CASE` | `local SECONDS_PER_DAY = 86400` |
-| Config key | `camelCase` inside a `PascalCase` group | `RoundConfig.Phases.briefingSeconds` |
+| Config value | `camelCase` | `RoundConfig.maxRunSeconds`, `GameConfig.name` |
+| Config group (a table of related values) | `PascalCase` | `RoundConfig.Phases.briefingSeconds` |
 
 ### Rules
 
@@ -127,7 +128,8 @@ well-known alternative is used with a `TODO(verify-in-studio)`.
   `delay()`.
 - No magic numbers: tunable values live in `src/shared/Config/`. Content (locations,
   rooms, puzzles, cosmetics) lives in `src/shared/Content/`. Code reads data; it does not
-  hard-code it.
+  hard-code it. One agreed exception: each remote's rate limit sits next to its schema
+  in `src/shared/Remotes/Definitions.luau`, which is itself a data-only file.
 - Data shapes are defined once, in `src/shared/Types`.
 - Use `CollectionService` tags for puzzle and hazard objects instead of hard-coded paths.
 - Every connection, instance and task created at runtime is cleaned up through a `Maid`.
@@ -138,6 +140,6 @@ well-known alternative is used with a `TODO(verify-in-studio)`.
 - The server owns truth (coins, XP, inventory, outcomes, puzzle state, timers). The
   client never decides outcomes.
 - All client-to-server messages go through the `Remotes` module, which validates
-  arguments and rate-limits per player.
+  arguments and rate-limits per player. Each remote has exactly one server handler.
 - No secrets, API keys or credentials in the repo. Ever.
 - No third-party runtime libraries in v1 (see `DECISIONS.md` D-003).

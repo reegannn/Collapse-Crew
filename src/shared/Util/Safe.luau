@@ -16,15 +16,15 @@
 		Safe.Retry(options, fn) -> (ok, resultOrError)
 			Runs fn(attemptNumber) up to options.attempts times, waiting between
 			tries. The wait starts at options.baseDelaySeconds and is multiplied
-			by options.backoffFactor after each failure, capped at
-			options.maxDelaySeconds ("exponential backoff": wait longer each
-			time so a struggling service is not hammered).
+			by options.backoffFactor after each failure; no wait is ever longer
+			than options.maxDelaySeconds ("exponential backoff": wait longer
+			each time so a struggling service is not hammered).
 			Returns (true, firstResult) on the first success, or
 			(false, lastErrorMessage) after the final failure.
 
 		Safe.Spawn(label, fn, ...) -> thread
-			Runs fn(...) in a new thread. An error is logged with `label`
-			instead of surfacing as an anonymous error.
+			Runs fn(...) in a new thread. An error is logged with `label` and
+			its stack trace instead of surfacing as an anonymous error.
 
 	Contract
 		- Only the FIRST return value of `fn` is passed back.
@@ -57,7 +57,7 @@ end
 
 function Safe.Retry(options: RetryOptions, fn: (attempt: number) -> any): (boolean, any)
 	local attempts = math.max(1, options.attempts)
-	local delaySeconds = options.baseDelaySeconds
+	local delaySeconds = math.min(options.baseDelaySeconds, options.maxDelaySeconds)
 	local lastError = "no attempt was made"
 
 	for attempt = 1, attempts do
@@ -78,7 +78,8 @@ end
 
 function Safe.Spawn(label: string, fn: (...any) -> ...any, ...: any): thread
 	return task.spawn(function(...: any)
-		local ok, problem = pcall(fn, ...)
+		-- debug.traceback turns the error into "message + where it happened".
+		local ok, problem = xpcall(fn, debug.traceback, ...)
 		if not ok then
 			log:Error("%s failed: %s", label, tostring(problem))
 		end

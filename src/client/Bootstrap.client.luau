@@ -46,4 +46,5 @@ local loggingConfig = GameConfig.Logging
 Logger.SetLevel(if RunService:IsStudio() then loggingConfig.studioLevel else loggingConfig.level)
 
 Remotes.InitClient()
+-- TODO(verify-in-studio): the Client folder is copied from StarterPlayerScripts with Bootstrap and Controllers intact, so script.Parent.Controllers exists here.
 Lifecycle.Run("Client", script.Parent.Controllers, CONTROLLER_ORDER)

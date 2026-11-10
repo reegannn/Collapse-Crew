@@ -19,8 +19,8 @@ local TableUtil = require(script.Parent.Parent.Util.TableUtil)
 
 local GameConfig = {
 	-- Working title. Shown in logs; player-facing text comes later (M9).
-	Name = "Collapse Crew",
-	Version = "0.1.0",
+	name = "Collapse Crew",
+	version = "0.1.0",
 
 	Team = {
 		-- A team may be a single player ("solo"); puzzles scale down for small teams (M6).

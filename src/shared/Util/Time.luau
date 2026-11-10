@@ -22,7 +22,9 @@
 		Time.DayNumber(unixSeconds?) -> number  UTC day number (defaults to now).
 		Time.DateKey(unixSeconds?) -> string    "YYYY-MM-DD" in UTC (defaults to now).
 		Time.StartOfDay(dayNumber) -> number    Unix time of 00:00:00 UTC on that day.
-		Time.SecondsUntilNextDay(unixSeconds?) -> number   1..86400 seconds until UTC midnight.
+		Time.SecondsUntilNextDay(unixSeconds?) -> number   Seconds until UTC midnight: 1..86400
+		                                        for whole-second input (a fractional input
+		                                        such as SyncedNow gives a fractional answer).
 		Time.FormatClock(seconds) -> string     "M:SS" for timers (negative values show 0:00).
 
 	Contract
@@ -49,6 +51,7 @@ local SECONDS_PER_MINUTE = 60
 
 function Time.Now(): number
 	-- os.time() with no arguments returns the current UTC Unix timestamp.
+	-- TODO(verify-in-studio): os.time() on the server is UTC seconds since 1 Jan 1970 (compare Time.DateKey() with today's UTC date).
 	return os.time()
 end
 

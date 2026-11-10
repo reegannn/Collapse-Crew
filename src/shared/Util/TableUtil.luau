@@ -11,7 +11,9 @@
 		TableUtil.Reconcile(target, template) -> target
 			Fills in any keys that `template` has and `target` lacks (deeply),
 			WITHOUT overwriting anything already in `target`. Used to add new
-			default fields to older saved player data.
+			default fields to older saved player data. Lists are treated like
+			any other table (slot 1, slot 2 ... are filled if missing), so a
+			template should only contain EMPTY lists, never pre-filled ones.
 		TableUtil.DeepFreeze(value) -> value
 			Makes a table and everything inside it read-only. Used by Config
 			modules so settings cannot be changed by accident at runtime.

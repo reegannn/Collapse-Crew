@@ -33,6 +33,9 @@
 		- Arguments are passed as-is (tables are not copied).
 		- A thread paused in Wait() stays paused forever if the signal never
 		  fires again. Do not Wait() on a signal that may be destroyed first.
+		- DisconnectAll/Destroy only remove the handlers. They do not wake
+		  threads paused in Wait(), and the signal can still be connected to and
+		  fired afterwards.
 ]]
 
 export type Connection = {
@@ -103,7 +106,12 @@ function Signal.Wait(self: any): ...any
 	local connection: any
 	connection = Signal.Connect(self, function(...: any)
 		connection:Disconnect()
-		task.spawn(waitingThread, ...)
+		-- The waiting thread may have been cancelled in the meantime (a Maid
+		-- cancels threads it owns). Resuming a finished thread would raise an error.
+		-- TODO(verify-in-studio): task.spawn(thread, ...) resumes a thread parked in coroutine.yield(), and yield returns those values.
+		if coroutine.status(waitingThread) == "suspended" then
+			task.spawn(waitingThread, ...)
+		end
 	end)
 	return coroutine.yield()
 end

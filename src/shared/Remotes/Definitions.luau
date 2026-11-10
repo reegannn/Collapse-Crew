@@ -32,10 +32,19 @@
 		   in docs/SECURITY.md (created in M11).
 
 	Contract
-		- Pure data. Requiring this module has no side effects.
+		- Pure data, read-only at runtime (frozen). Requiring this module has no
+		  side effects.
+		- This file is the agreed home for each remote's rate-limit numbers, as
+		  an exception to "tunable numbers live in Config": keeping a remote's
+		  schema and its limit side by side means neither can be forgotten.
+		  Only the fallback limit lives in GameConfig.Remotes.
+		- Remotes.InitServer checks every entry at start-up and refuses to
+		  create one that is malformed or that uses a loose validator for
+		  client input.
 ]]
 
 local Schema = require(script.Parent.Schema)
+local TableUtil = require(script.Parent.Parent.Util.TableUtil)
 
 export type RateLimit = {
 	burst: number,
@@ -61,4 +70,4 @@ local Definitions: { [string]: RemoteDefinition } = {
 	},
 }
 
-return Definitions
+return TableUtil.DeepFreeze(Definitions)

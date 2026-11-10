@@ -14,6 +14,9 @@
 
 	Public API (each returns a validator)
 		Schema.String(options?)       text; options = { minLength?, maxLength? }
+		                              Lengths are counted in BYTES (an emoji or accented
+		                              letter is several bytes). Always rejects text that
+		                              is not valid UTF-8.
 		Schema.Number(options?)       number; options = { min?, max?, integer? }
 		                              Always rejects NaN and infinity.
 		Schema.Integer(min, max)      whole number in [min, max]
@@ -23,8 +26,14 @@
 		Schema.Vector3(maxMagnitude?) a Vector3 with no NaN parts, optionally length-limited
 		Schema.Array(element, maxLength?)  a list (1..n, no gaps) whose items pass `element`
 		Schema.Optional(validator)    nil, or a value that passes `validator`
-		Schema.Table()                any table      } ONLY for server-to-client remotes.
-		Schema.Any()                  any value      } Never use these for client input.
+		Schema.Table()                any table      } "Loose" validators: ONLY for
+		Schema.Any()                  any value      } server-to-client remotes.
+
+		Schema.IsLoose(validator) -> boolean
+			true for Schema.Table/Schema.Any, and for an Optional or Array built
+			around one. Remotes refuses to create a client-to-server remote that
+			uses a loose validator, so the "never for client input" rule is
+			enforced by code, not just by this comment.
 
 		Schema.ValidateArgs(validators, packedArgs) -> (ok, reason?)
 			Checks a whole argument list (`packedArgs` comes from table.pack(...)).
@@ -36,6 +45,9 @@
 		- Validators never yield and never throw.
 		- Validators only answer yes/no. They never change the value.
 		- Default size limits come from GameConfig.Remotes.
+		- Schema.Array assumes what Roblox delivers over the network: plain
+		  tables with no metatable, which are either lists or string-keyed
+		  dictionaries. It still refuses gaps and extra keys itself.
 ]]
 
 local GameConfig = require(script.Parent.Parent.Config.GameConfig)
@@ -59,6 +71,19 @@ export type PackedArgs = { n: number, [number]: any }
 
 local Schema = {}
 
+-- Validators that accept unstructured data. Its size is fixed by the number
+-- of loose validators written in Remotes/Definitions.
+local looseValidators: { [Validator]: boolean } = {}
+
+local function markLoose(validator: Validator): Validator
+	looseValidators[validator] = true
+	return validator
+end
+
+function Schema.IsLoose(validator: Validator): boolean
+	return looseValidators[validator] == true
+end
+
 function Schema.String(options: StringOptions?): Validator
 	local minLength = 0
 	local maxLength = remoteConfig.defaultMaxStringLength
@@ -74,6 +99,11 @@ function Schema.String(options: StringOptions?): Validator
 		local length = #value
 		if length < minLength or length > maxLength then
 			return false, string.format("string length %d is outside %d-%d", length, minLength, maxLength)
+		end
+		-- utf8.len returns nil when the bytes are not valid UTF-8 text. Broken
+		-- text can cause trouble later when it is saved or shown, so refuse it.
+		if utf8.len(value) == nil then
+			return false, "string is not valid UTF-8"
 		end
 		return true, nil
 	end
@@ -175,7 +205,7 @@ end
 function Schema.Array(element: Validator, maxLength: number?): Validator
 	local limit = maxLength or remoteConfig.defaultMaxArrayLength
 
-	return function(value: any): (boolean, string?)
+	local validator: Validator = function(value: any): (boolean, string?)
 		if type(value) ~= "table" then
 			return false, "expected a list, got " .. typeof(value)
 		end
@@ -196,37 +226,53 @@ function Schema.Array(element: Validator, maxLength: number?): Validator
 		end
 
 		for index = 1, length do
-			local ok, reason = element(value[index])
+			local item = value[index]
+			-- Checked here, not left to `element`, so that a gap is refused
+			-- even when the element validator would accept nil.
+			if item == nil then
+				return false, string.format("list has a gap at item %d", index)
+			end
+			local ok, reason = element(item)
 			if not ok then
 				return false, string.format("item %d: %s", index, reason or "invalid")
 			end
 		end
 		return true, nil
 	end
+
+	if Schema.IsLoose(element) then
+		markLoose(validator)
+	end
+	return validator
 end
 
 function Schema.Optional(validator: Validator): Validator
-	return function(value: any): (boolean, string?)
+	local optional: Validator = function(value: any): (boolean, string?)
 		if value == nil then
 			return true, nil
 		end
 		return validator(value)
 	end
+
+	if Schema.IsLoose(validator) then
+		markLoose(optional)
+	end
+	return optional
 end
 
 function Schema.Table(): Validator
-	return function(value: any): (boolean, string?)
+	return markLoose(function(value: any): (boolean, string?)
 		if type(value) ~= "table" then
 			return false, "expected a table, got " .. typeof(value)
 		end
 		return true, nil
-	end
+	end)
 end
 
 function Schema.Any(): Validator
-	return function(_value: any): (boolean, string?)
+	return markLoose(function(_value: any): (boolean, string?)
 		return true, nil
-	end
+	end)
 end
 
 function Schema.ValidateArgs(validators: { Validator }, packedArgs: PackedArgs): (boolean, string?)

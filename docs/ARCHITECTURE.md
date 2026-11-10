@@ -105,9 +105,17 @@ a `RemoteEvent`.
   exist.
 - **Checked on the server, in this order:** sender still in the game -> per-player rate
   limit -> argument count and types. Only then does game code see the message.
-- **Silent rejection:** a message that fails is ignored and noted only in the Debug log.
+- **Quiet rejection:** a one-way message that fails is ignored; a request that fails
+  gets only the generic answer `(false, "Rejected")`. The sender is never told which
+  check failed; the detail goes to the Debug log.
+- **One handler per remote:** each client-to-server remote has exactly one server
+  handler; connecting a second raises an error at start-up.
+- **Checked at start-up:** a malformed definition, or a client-to-server remote that
+  uses a "loose" validator (`Schema.Table`/`Schema.Any`), is logged and not created.
 - **Requests with replies** (`Function` remotes) only go client -> server and always
   answer `(ok, payload)`. The server never waits on a client.
+- **If a client's networking fails to start** (remotes never arrive), that client's
+  sends are dropped and logged; the server simply never sees it report ready.
 - **Principle:** clients send *what the player did* ("pressed switch X"), never *what
   should happen* ("give me 50 coins").
 
@@ -170,7 +178,7 @@ Remotes declared so far:
 | `Config/FlagConfig` | Default value of every feature flag | `TableUtil` |
 | `Flags` | `IsEnabled(name)`; the only way to read a flag | `FlagConfig`, `Logger` |
 | `Remotes` | The network doorway (see Networking) | `Flags`, `GameConfig`, `Logger`, own children |
-| `Remotes/Definitions` | Declarative list of every remote | `Schema` |
+| `Remotes/Definitions` | Declarative list of every remote (schema + rate limit) | `Schema`, `TableUtil` |
 | `Remotes/Schema` | Argument validators | `GameConfig` |
 | `Remotes/RateLimiter` | Per-player token-bucket limiter | nothing |
 

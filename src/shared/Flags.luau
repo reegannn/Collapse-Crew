@@ -35,6 +35,13 @@ local reportedUnknown: { [string]: boolean } = {}
 local Flags = {}
 
 function Flags.IsEnabled(name: string): boolean
+	-- Guard against a non-text name (for example nil from a missing variable),
+	-- which would otherwise raise an error when used as a table key below.
+	if type(name) ~= "string" then
+		log:Warn("Flags.IsEnabled was called with a %s instead of a flag name; treating it as off", typeof(name))
+		return false
+	end
+
 	local value = FlagConfig[name]
 	if value == nil then
 		if not reportedUnknown[name] then

@@ -30,9 +30,11 @@
 		- Each Start() runs in its own thread, started in order. Code at the top
 		  of a Start (before its first pause) therefore runs in list order.
 		- A module that is missing, fails to load, or errors in Init is logged
-		  and skipped (its Start is not called). The rest still start, so one
-		  broken module does not take the whole game down.
-		- Init and Start are both optional on a module.
+		  (with a stack trace where one is available) and skipped: its Start is
+		  not called. The rest still start, so one broken module does not take
+		  the whole game down.
+		- By convention every Service/Controller defines both Init and Start
+		  (see Types.Service). If one is absent it is simply skipped.
 		- Run itself returns as soon as every Start has been launched.
 ]]
 
@@ -59,6 +61,7 @@ local function loadModules(log: Logger.Logger, container: Instance, order: { str
 			continue
 		end
 
+		-- TODO(verify-in-studio): pcall(require, moduleScript) returns false (rather than halting this script) when the module has an error.
 		local ok, result = pcall(dynamicRequire, moduleScript)
 		if not ok then
 			log:Error("%q failed to load: %s", name, tostring(result))
@@ -85,7 +88,7 @@ local function initModules(log: Logger.Logger, loaded: { LoadedModule }): { Load
 			continue
 		end
 
-		local ok, problem = pcall(init)
+		local ok, problem = xpcall(init, debug.traceback)
 		if ok then
 			table.insert(ready, entry)
 		else
@@ -104,7 +107,7 @@ local function startModules(log: Logger.Logger, ready: { LoadedModule })
 		end
 
 		task.spawn(function()
-			local ok, problem = pcall(start)
+			local ok, problem = xpcall(start, debug.traceback)
 			if not ok then
 				log:Error("%s.Start failed: %s", entry.name, tostring(problem))
 			end

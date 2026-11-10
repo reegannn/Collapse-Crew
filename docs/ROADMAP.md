@@ -13,7 +13,7 @@ Legend: `[x]` done (written and statically reviewed, **not** run), `[ ]` not don
 | ID | Name | Main outcome | Status |
 |----|------|--------------|--------|
 | M0 | Repo foundation | Layout, configs, docs, conventions | Done |
-| M1 | Core framework | Bootstrap, utilities, remotes, config, logging | In review (code written; Self-Review Gate pending) |
+| M1 | Core framework | Bootstrap, utilities, remotes, config, logging | Done |
 | M2 | Player data and economy | Saving, coins, XP, leaderstats | Not started |
 | M3 | Lobby and teams | Lobby, party formation, team arenas | Not started |
 | M4 | Round loop | State machine, timer, win/lose, respawn rules | Not started |
